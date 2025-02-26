@@ -5,16 +5,21 @@
 */
 include { FASTQC                 } from '../modules/nf-core/fastqc/main'
 include { MULTIQC                } from '../modules/nf-core/multiqc/main'
+include { BWA_INDEX              } from '../modules/nf-core/bwa/index/main'
 include { paramsSummaryMap       } from 'plugin/nf-schema'
 include { paramsSummaryMultiqc   } from '../subworkflows/nf-core/utils_nfcore_pipeline'
 include { softwareVersionsToYAML } from '../subworkflows/nf-core/utils_nfcore_pipeline'
 include { methodsDescriptionText } from '../subworkflows/local/utils_nfcore_snippet_pipeline'
+include { FASTQ_ALIGN_BWAALN     } from '../subworkflows/nf-core/fastq_align_bwaaln'
 
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     RUN MAIN WORKFLOW
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 */
+
+
+params.fai = 'assets/Homo_sapiens_assembly38_chr20_chrM.fasta.fai'
 
 workflow SNIPPET {
 
@@ -32,6 +37,20 @@ workflow SNIPPET {
     )
     ch_multiqc_files = ch_multiqc_files.mix(FASTQC.out.zip.collect{it[1]})
     ch_versions = ch_versions.mix(FASTQC.out.versions.first())
+    
+    //
+    // MODULE: Run BWA Index
+    //
+    ch_fasta = Channel.fromPath("assets/Homo_sapiens_assembly38_chr20_chrM.fasta").map{it ->[[id:it.simpleName], it]}.collect()
+    BWA_INDEX(ch_fasta)
+
+    //
+    // SUBWORKFLOW: FASTQ_ALIGN_BWAALN
+    //
+    FASTQ_ALIGN_BWAALN (
+        ch_samplesheet,
+        BWA_INDEX.out.index
+    )
 
     //
     // Collate and save software versions
@@ -44,7 +63,7 @@ workflow SNIPPET {
             newLine: true
         ).set { ch_collated_versions }
 
-
+    
     //
     // MODULE: MultiQC
     //
