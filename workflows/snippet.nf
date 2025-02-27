@@ -3,14 +3,15 @@
     IMPORT MODULES / SUBWORKFLOWS / FUNCTIONS
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 */
-include { FASTQC                 } from '../modules/nf-core/fastqc/main'
-include { MULTIQC                } from '../modules/nf-core/multiqc/main'
-include { BWA_INDEX              } from '../modules/nf-core/bwa/index/main'
-include { paramsSummaryMap       } from 'plugin/nf-schema'
-include { paramsSummaryMultiqc   } from '../subworkflows/nf-core/utils_nfcore_pipeline'
-include { softwareVersionsToYAML } from '../subworkflows/nf-core/utils_nfcore_pipeline'
-include { methodsDescriptionText } from '../subworkflows/local/utils_nfcore_snippet_pipeline'
-include { FASTQ_ALIGN_BWAALN     } from '../subworkflows/nf-core/fastq_align_bwaaln'
+include { FASTQC                  } from '../modules/nf-core/fastqc/main'
+include { MULTIQC                 } from '../modules/nf-core/multiqc/main'
+include { BWA_INDEX               } from '../modules/nf-core/bwa/index/main'
+include { paramsSummaryMap        } from 'plugin/nf-schema'
+include { paramsSummaryMultiqc    } from '../subworkflows/nf-core/utils_nfcore_pipeline'
+include { softwareVersionsToYAML  } from '../subworkflows/nf-core/utils_nfcore_pipeline'
+include { methodsDescriptionText  } from '../subworkflows/local/utils_nfcore_snippet_pipeline'
+include { FASTQ_ALIGN_BWAALN      } from '../subworkflows/nf-core/fastq_align_bwaaln'
+include { BAM_SORT_STATS_SAMTOOLS } from '../subworkflows/nf-core/bam_sort_stats_samtools'
 
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -50,6 +51,14 @@ workflow SNIPPET {
     FASTQ_ALIGN_BWAALN (
         ch_samplesheet,
         BWA_INDEX.out.index
+    )
+    
+    //
+    // SUBWORKFLOW: BAM_SORT_STATS_SAMTOOLS
+    //
+    BAM_SORT_STATS_SAMTOOLS (
+        FASTQ_ALIGN_BWAALN.out.bam,
+        ch_fasta
     )
 
     //
