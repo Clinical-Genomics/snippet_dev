@@ -6,6 +6,7 @@
 include { FASTQC                  } from '../modules/nf-core/fastqc/main'
 include { MULTIQC                 } from '../modules/nf-core/multiqc/main'
 include { BWA_INDEX               } from '../modules/nf-core/bwa/index/main'
+include { PICARD_MARKDUPLICATES   } from '../modules/nf-core/picard/markduplicates/main.nf'
 include { paramsSummaryMap        } from 'plugin/nf-schema'
 include { paramsSummaryMultiqc    } from '../subworkflows/nf-core/utils_nfcore_pipeline'
 include { softwareVersionsToYAML  } from '../subworkflows/nf-core/utils_nfcore_pipeline'
@@ -18,6 +19,7 @@ include { BAM_SORT_STATS_SAMTOOLS } from '../subworkflows/nf-core/bam_sort_stats
     RUN MAIN WORKFLOW
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 */
+
 
 
 params.fai = 'assets/Homo_sapiens_assembly38_chr20_chrM.fasta.fai'
@@ -42,7 +44,7 @@ workflow SNIPPET {
     //
     // MODULE: Run BWA Index
     //
-    ch_fasta = Channel.fromPath("assets/Homo_sapiens_assembly38_chr20_chrM.fasta").map{it ->[[id:it.simpleName], it]}.collect()
+    ch_fasta = Channel.fromPath("https://raw.githubusercontent.com/nf-core/test-datasets/refs/heads/raredisease/reference/reference.fasta").map{it ->[[id:it.simpleName], it]}.collect()
     BWA_INDEX(ch_fasta)
 
     //
@@ -59,6 +61,17 @@ workflow SNIPPET {
     BAM_SORT_STATS_SAMTOOLS (
         FASTQ_ALIGN_BWAALN.out.bam,
         ch_fasta
+    )
+
+
+    ch_fasta_fai = Channel.fromPath("https://raw.githubusercontent.com/nf-core/test-datasets/refs/heads/raredisease/reference/reference.fasta.fai").map{it ->[[id:it.simpleName], it]}.collect()
+    //
+    // MODULE: PICARD_MARKDUPLICATES
+    //
+    PICARD_MARKDUPLICATES (
+        BAM_SORT_STATS_SAMTOOLS.out.bam,
+        ch_fasta,
+        ch_fasta_fai
     )
 
     //
