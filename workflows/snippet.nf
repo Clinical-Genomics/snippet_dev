@@ -7,12 +7,15 @@ include { FASTQC                  } from '../modules/nf-core/fastqc/main'
 include { MULTIQC                 } from '../modules/nf-core/multiqc/main'
 include { BWA_INDEX               } from '../modules/nf-core/bwa/index/main'
 include { PICARD_MARKDUPLICATES   } from '../modules/nf-core/picard/markduplicates/main.nf'
+include { WISECONDORX_PREDICT     } from '../modules/nf-core/wisecondorx/predict/main'
+include { WISECONDORX_CONVERT     } from '../modules/nf-core/wisecondorx/convert/main'
 include { paramsSummaryMap        } from 'plugin/nf-schema'
 include { paramsSummaryMultiqc    } from '../subworkflows/nf-core/utils_nfcore_pipeline'
 include { softwareVersionsToYAML  } from '../subworkflows/nf-core/utils_nfcore_pipeline'
 include { methodsDescriptionText  } from '../subworkflows/local/utils_nfcore_snippet_pipeline'
 include { FASTQ_ALIGN_BWAALN      } from '../subworkflows/nf-core/fastq_align_bwaaln'
 include { BAM_SORT_STATS_SAMTOOLS } from '../subworkflows/nf-core/bam_sort_stats_samtools'
+
 
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -22,7 +25,7 @@ include { BAM_SORT_STATS_SAMTOOLS } from '../subworkflows/nf-core/bam_sort_stats
 
 
 
-params.fai = 'assets/Homo_sapiens_assembly38_chr20_chrM.fasta.fai'
+params.fai = 'assets/Homo_sapiens_assembly38_chr20_chrM.fasta.fai' //Hard coded patch this
 
 workflow SNIPPET {
 
@@ -44,7 +47,7 @@ workflow SNIPPET {
     //
     // MODULE: Run BWA Index
     //
-    ch_fasta = Channel.fromPath("https://raw.githubusercontent.com/nf-core/test-datasets/refs/heads/raredisease/reference/reference.fasta").map{it ->[[id:it.simpleName], it]}.collect()
+    ch_fasta = Channel.fromPath("https://raw.githubusercontent.com/nf-core/test-datasets/refs/heads/raredisease/reference/reference.fasta").map{it ->[[id:it.simpleName], it]}.collect() // Hard code, Has to be cleaned up!
     BWA_INDEX(ch_fasta)
 
     //
@@ -55,6 +58,7 @@ workflow SNIPPET {
         BWA_INDEX.out.index
     )
     
+
     //
     // SUBWORKFLOW: BAM_SORT_STATS_SAMTOOLS
     //
@@ -64,7 +68,7 @@ workflow SNIPPET {
     )
 
 
-    ch_fasta_fai = Channel.fromPath("https://raw.githubusercontent.com/nf-core/test-datasets/refs/heads/raredisease/reference/reference.fasta.fai").map{it ->[[id:it.simpleName], it]}.collect()
+    ch_fasta_fai = Channel.fromPath("https://raw.githubusercontent.com/nf-core/test-datasets/refs/heads/raredisease/reference/reference.fasta.fai").map{it ->[[id:it.simpleName], it]}.collect() // Hard code, Has to be cleaned up!
     //
     // MODULE: PICARD_MARKDUPLICATES
     //
@@ -72,6 +76,28 @@ workflow SNIPPET {
         BAM_SORT_STATS_SAMTOOLS.out.bam,
         ch_fasta,
         ch_fasta_fai
+    )
+
+    //
+    // MODULE: WISECONDORX_CONVERT
+    //
+    WISECONDORX_CONVERT (
+        PICARD_MARKDUPLICATES.out.bam.join(PICARD_MARKDUPLICATES.out.bai),
+        ch_fasta,
+        ch_fasta_fai
+    )
+
+
+    ch_WISECONDORX_CONVERT = WISECONDORX_CONVERT.out.npz
+    ch_external_reference = Channel.fromPath("${projectDir}/assets/wisecondor_X_bwa_ref.100kbp.npz").map{it ->[[id:it.simpleName], it]}.collect()
+    
+    //
+    // MODULE: WISECONDORX_PREDICT
+    //
+    WISECONDORX_PREDICT (
+        ch_WISECONDORX_CONVERT,
+        ch_external_reference,
+        [[],[]]
     )
 
     //
